@@ -9,7 +9,7 @@ import requests
 
 def parse_price(price_str):
     """
-    Parses a price string (e.g., "$11.95", "$54.99 to $79.99") into cents.
+    Parses a price string into cents.
     Returns None if no price is found.
     """
     if not price_str:
@@ -99,11 +99,12 @@ def extract_items_from_html(html_content):
         )
         shipping = parse_shipping(shipping_elem.text) if shipping_elem else None
 
-        # Free Returns
+        # Free Returns (Returns True if present & free, None if missing)
         returns_elem = listing.select_one(".s-item__free-returns")
-        free_returns = (
-            True if returns_elem and "free" in returns_elem.text.lower() else False
-        )
+        if returns_elem:
+            free_returns = "free" in returns_elem.text.lower()
+        else:
+            free_returns = None
 
         # Items Sold
         sold_elem = listing.select_one(
