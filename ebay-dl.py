@@ -9,13 +9,12 @@ import requests
 
 def parse_price(price_str):
     """
-    Parses a price string (e.g., "$11.95", "$54.99 to $79.99") into cents (integer).
+    Parses a price string (e.g., "$11.95", "$54.99 to $79.99") into cents.
     Returns None if no price is found.
     """
     if not price_str:
         return None
 
-    # Handle price ranges by matching the first dollar amount found
     match = re.search(r"\$([\d,]+\.?\d*)", price_str)
     if match:
         clean_price = match.group(1).replace(",", "")
@@ -28,7 +27,7 @@ def parse_price(price_str):
 
 def parse_shipping(shipping_str):
     """
-    Parses shipping string into cents (integer).
+    Parses shipping string into cents.
     Returns 0 for free shipping, None if missing or unspecified.
     """
     if not shipping_str:
@@ -51,7 +50,7 @@ def parse_shipping(shipping_str):
 
 def parse_items_sold(sold_str):
     """
-    Parses items sold count as an integer (e.g., "15 sold", "1,234 sold").
+    Parses items sold count (e.g., "15 sold", "1,234 sold").
     Returns None if missing.
     """
     if not sold_str:
@@ -127,17 +126,25 @@ def extract_items_from_html(html_content):
 
 def main():
     parser = argparse.ArgumentParser(description="Scrape eBay search results.")
-    parser.add_argument("--search", required=True, help="Search term to query on eBay")
+    parser.add_argument(
+        "positional_search", nargs="?", help="Search term as positional argument"
+    )
+    parser.add_argument(
+        "--search", "--query", "--term", help="Search term as flag argument"
+    )
     parser.add_argument(
         "--pages-dir",
         help="Directory containing practice HTML pages (page-1.html to page-10.html)",
     )
     args = parser.parse_args()
 
+    search_term = args.search or args.positional_search
+    if not search_term:
+        parser.error("A search term must be provided.")
+
     all_items = []
 
     if args.pages_dir:
-        # Load practice pages from local directory
         for page_num in range(1, 11):
             file_path = os.path.join(args.pages_dir, f"page-{page_num}.html")
             if os.path.exists(file_path):
@@ -146,12 +153,11 @@ def main():
                     items = extract_items_from_html(html_content)
                     all_items.extend(items)
     else:
-        # Make requests to live eBay across 10 pages
         base_url = "https://www.ebay.com/sch/i.html"
         headers = {"User-Agent": "Mozilla/5.0"}
 
         for page_num in range(1, 11):
-            params = {"_nkw": args.search, "_pgn": page_num}
+            params = {"_nkw": search_term, "_pgn": page_num}
             try:
                 response = requests.get(
                     base_url, params=params, headers=headers, timeout=10
@@ -164,9 +170,7 @@ def main():
                 print(f"Error requesting page {page_num}: {e}")
                 break
 
-    # Construct output JSON filename from search term
-    filename_base = args.search.replace(" ", "_")
-    output_filename = f"{filename_base}.json"
+    output_filename = f"{search_term}.json"
 
     with open(output_filename, "w", encoding="utf-8") as f:
         json.dump(all_items, f, indent=2)
